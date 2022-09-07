@@ -24,11 +24,13 @@ library(dmetar)
 library(tidyverse)
 library(janitor)
 library(readODS)
-library(nlme)
+library(lme4)
+#library(nlme)
 #library(investr)
 #library(broom)
 #library(nlshelper)
 #library(MASS)
+
 
 inpath<-"data/WHO Annoyance Data Road 2017_Namen_einheitlich.ods"
 outpath<-"graphs/"
@@ -69,61 +71,71 @@ HAList <- raw %>%
   left_join(., nList) %>%
   group_by(Location) %>% filter(n() >= 3)# ignoriere die mit weniger als 3 Datenpunkten
 
+HAList<-HAList %>% mutate(Location=as.factor(Location))
 
 regrList <-
   raw %>% select(Lden, contains(c("M&O", "Regr", "Perc"))) %>% .[complete.cases(.[, 2:11]), ]# Fit Ergebnisse aus Guski Tabelle, zu vergleichen mit meinen Ergebnissen
 
-
-
-parFit <-
-  nls(ProzHA ~ a * Lden ^ 2 + b * Lden + c,
-      start = list(a = 0.03, b = -10, c = 50),
-      data = HAList)
-linFitEinzel <-
-  nlsList(ProzHA ~ b * Lden + c |
-            Location,
-          start = list(b = 1, c = -50),
-          HAList)
-
-parFitEinzel <-
-  nlsList(ProzHA ~ a * Lden ^ 2 + b * Lden + c |
-            Location,
-          start = list(a = 0.03, b = -10, c = 100),
-          HAList)
-
-tidy(parFit)
-
-coef(parFit)
-
-predict(parFitEinzel$"France")
-predict(linFitEinzel)
-confint(linFitEinzel)
-coef(parFitEinzel)
-formula(parFitEinzel)
-intGaussFit<-nls(ProzHA~pnorm(ProzHA,L50,breite),start=list(L50=50,breite=10),HAList)
-parFitCurve<-tibble(Lden=HAList$Lden,ProzHA=predict(parFit))
-#parFitCurves<-tibble(Lden=HAList$Lden,ProzHA=predict(parFitEinzel))
-
 nmbStud<-length(linFitEinzel)
 xSeq<-seq(40,85)
-f1<-predict(linFitEinzel,newdata=data.frame(Lden=xSeq))
-linFitCurves<-tibble(Lden=rep(xSeq,nmbStud),ProzHA=f1,Location=names(f1))
 
-# formula(parFitEinzel$France)
-# test<-data(parFitEinzel)
-# length(parFitEinzel)
-# head(test)
-# names(test)
-# predict(parFitEinzel)
 
-#pnorm(60,mean=50,sd=10)
-ggplot(HAList,aes(x=Lden,y=ProzHA))+geom_point(aes(size=sqrt(N)/10))+geom_line(data=parFitCurve,aes(color="red"))
+#fit a mixed model with control of corellations 
+HAmodel<-lmer(log(ProzHA)~Lden + (Lden | Location), HAList,weights = sqrt(N))
+HAList$fit<-predict(HAmodel)
+HAList$uncFit<-predict(HAmodel,re.form=NA)
 
-# predict(linTest)
-# linTest$intercept
-# plot(linTest,las=1)
-pl1<-ggplot(HAList,aes(x=Lden,y=ProzHA))+
-  geom_point(aes(size=sqrt(N)/10))
+
+HAList<-regrList %>% select(Lden,`Regr WHO Road data`,`Regr WHO Road ohne Alp+Asia`) %>% 
+  left_join(x=HAList,y=.)
+HAmodel
+
+plWHOfit<-ggplot(HAList,aes(
+  x = Lden)) +
+  geom_line(
+    data = HAList[!is.na(HAList$`Regr WHO Road data`), ],
+    mapping = aes(
+   #   x = Lden,
+      y=  `Regr WHO Road data`
+    ),
+    color = "blue",
+    size=3,
+    na.rm = TRUE
+  )+
+  geom_ribbon(
+    data = regrList,
+    mapping = aes(
+    #  x = Lden,
+      ymin = `Percentile 5`,
+      ymax =  `Percentile 95`
+    ),
+    fill = "blue",
+    alpha = 0.2
+  )
+
+g <- guide_legend("title")
+plWHOfit + guides(fill = g, size = g, shape = g)
+vglFit<-plWHOfit +
+  geom_point(data = HAList,
+             aes(
+     #          x = Lden,
+               y = ProzHA,
+               size = sqrt(N) / 10,
+               color = Location
+             )) +
+  geom_line(data = HAList,
+            aes(#x = Lden,
+                y = exp(fit),
+                color = Location))+
+  geom_line(data = HAList,
+            aes(#x = Lden,
+                y = exp(uncFit)),
+            color = "black",
+            size=3)+scale_y_log10()
+vglFit
+vglFit+facet_wrap(vars(Location))
+fitted(HAmodel)
+
 pl1+
   stat_smooth(color="red",method = 'nls', formula = 'y~I(a*x^2+b*x+c)',
               method.args = list(start=c(a=0.01, b=-3,c=100)), se=FALSE)# Fitte beliebige Parabel
@@ -137,8 +149,8 @@ ggsave(paste(outpath,"alle.png",sep=""))
 #       main = "pnorm")
 
 
- pl2<-pl1+stat_smooth(formula=y~I(x^2),method = "lm")# jetzt zusätzlich mit der Parabel aus lm gefittet.
- pl2
+pl2<-pl1+stat_smooth(formula=y~I(x^2),method = "lm")# jetzt zusätzlich mit der Parabel aus lm gefittet.
+pl2
 pl1+geom_line(data=parFitCurve,aes(color="red"))
 pl1lin<-pl1+aes(color=Location)+geom_line(data=linFitCurves)+coord_cartesian(ylim = c(0, 70))
 pl1lin
@@ -153,9 +165,7 @@ facPl2<-pl2+
 
 facPl2
 facPl+stat_smooth(method = "lm",color="black")
-  facPl+geom_line(data=linTest$)
 
-linTest$coefficients
 facPl+stat_smooth(method = "glm")
 
 ggplot(HAList, aes(x = Lden, y = ProzHA)) +
