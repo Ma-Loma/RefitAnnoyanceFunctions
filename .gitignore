@@ -36,6 +36,9 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 
+# additional files created by R markdown
+/export/RefitReport_files/
+
 # R Environment Variables
 .Renviron
 
