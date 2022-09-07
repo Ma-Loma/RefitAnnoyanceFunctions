@@ -1,0 +1,422 @@
+---
+title: "Reanalysis of noise annoyance functions"
+subtitle: "Author: Matthias Lochmann \nHessisches Landesamt für Naturschutz, Umwelt und Geologie"
+link citations: true
+header-includes:
+   - \usepackage{placeins}
+output:
+bibliography: bibliography/RefitReport.bib
+always_allow_html: yes
+---
+
+```{=html}
+<!--
+Dies ist ein Beispiel Markdown Kommentar, im Dokument finden sich weitere solcher Kommentare, die einzelne Themen kurz erläutern
+-->
+```
+```{r setup, include=FALSE}
+#Versuch, ein Literaturverwaltungsschnittstelle zu nutzen
+#update.packages(ask = FALSE)
+#remotes::install_github("paleolimbot/rbbt")
+library(rbbt)
+# Laden der für das Dokument benötitgten Pakete
+library(knitr)
+library(stringr)
+library(kableExtra)
+library(pander)
+library(dplyr)
+library(readr)
+library(plotly)
+library(flextable)
+library(lubridate)
+library(tidyr)
+
+library(pdftools)
+library(rsvg)
+library(cachem)
+library(fastmap)
+
+# Setzen von globalen Chunk optionen, jeder Chunk gibt per default nicht den Code aus, keine R messages und auch keine R warnings
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE,
+                      warning = FALSE,
+                      fig.align = "left")
+```
+
+```{r equationFunctions, cache = TRUE, include = FALSE}
+# Definition von R Funktionen die zur Nummerierung von R Funktionen im Dokument verwendet werden.
+
+is_docx_output <- function (fmt = knitr:::pandoc_to()) {
+  if (length(fmt) == 0) {
+    return(FALSE)
+  } else {
+    return(fmt == "docx")
+  }
+}
+numberEq.docx <- function (eq, lab, envir = docx.eqcounter) {
+  assign(x = "counter", value = get(x = "counter", envir = envir)+1, envir = envir)
+  assign(x = gsub("eq:", "", lab), value = get(x = "counter", envir = envir), envir = envir)
+  lab <- get("counter", envir = envir)
+  return(paste0('$$', eq, '\\;\\;\\;\\;(', lab, ')', '$$'))
+}
+
+labEq.docx <- function (lab, envir = docx.eqcounter) {
+  return(paste0('(', get(x = gsub("eq:", "", lab), envir = envir), ')'))
+}
+
+docx.eqcounter <- new.env()
+docx.eqcounter$counter <- 0
+
+```
+
+```{r imageFunctions, cache=TRUE, include=FALSE}
+# Defintion von R Funktionen die bei der Einbindung von svg und pdf Bildern unterstützen.
+
+get_image_info <- function(path, type = "svg") {
+  
+  if (!type %in% c("svg", "pdf")) stop("type needs to be a svg or pdf")
+  
+  if (type == "svg") {
+    info <- magick::image_read_svg(path) %>% 
+      magick::image_info()
+  }
+  
+  if (type == "pdf") {
+    info <- magick::image_read_pdf(path) %>% 
+      magick::image_info()
+  }
+  
+  density <- info %>% 
+    dplyr::pull(density) %>% 
+    strsplit("x") %>% 
+    unlist() %>% 
+    head(1) %>% 
+    as.numeric()
+  
+  width <- info$width/density
+  height <- info$height/density
+  
+  return(list(
+    density = density,
+    width = width,
+    height = height
+  ))
+}
+
+```
+
+```{r AnalyseSetup, include=FALSE}
+
+# Laden der speziell für die Analyse benötigten zusätzlichen Pakete
+library(meta)
+library(metafor)
+library(dmetar)
+library(tidyverse)
+library(janitor)
+library(readODS)
+library(lme4)
+```
+
+```{r logo, fig.align='center'}
+# Einbinden des Logos HLNUG auf das Deckblatt
+knitr::include_graphics("external_img/logo.jpg")
+```
+
+```{=html}
+<!--
+manueller Seitenumbruch mit \newpage
+-->
+```
+\newpage
+
+```{=html}
+<!--
+Einfügen eines Inhaltsverzeichnis, die Schreibweise benötigt das Paket officedown, 
+das Paket ermöglicht uns eine praktische Einbindung von Abbildungsverzeichnissen und Tabellenverzeichnissen, "seq_id: 'fig'" definiert das in das Verzeichnis Abbildungen eingetragen werden sollen, "seq_id: 'tab' das Tabellen eingetragen werden sollen
+-->
+```
+[**Table of content**]{.underline}
+
+<!---BLOCK_TOC--->
+
+```{=html}
+<!--
+"##" für Überschrift Typ 2
+-->
+```
+[**List of figures**]{.underline}
+
+<!---BLOCK_TOC{seq_id: 'fig'}--->
+
+\listoffigures
+
+[**List of tables**]{.underline}
+
+<!---BLOCK_TOC{seq_id: 'tab'}--->
+
+\listoftables
+
+\newpage
+
+The analysis an the report was written in RMarkdown. See e.g. @xie2015 .
+
+# Scientific Starting Point
+
+In order to estimate the environmental burden of disease of road noise, it is neccessairy to calculate the number of highly annoyed persons. The contribution of annoyance to the noise burden amounts to roughly half the total value[@Tobollik2019; @Hegewald2021]. As an important proportion of the hessian population is expected to be exposed to road noise in the range of 40 to 50 dB(A) *L~DEN~* the behavior of the exposure-response-relation (ERR) for high annoyance is of special interest. Especially the application of health impact assessments of noise mitigation measures, such as a hypothetical uniform reduction of all road noise sources by 3 dB, highlights the problematic aspect of the Guski[@Guski2017] as depicted in fig. \@ref(fig:Originalgraph): It is counter-intuitive, that there is a local minimum of annoyance at about 45 dB(A) *L~DEN~*. By reducing the exposure in this range by 3 dB, the ERR calculated burden might increase. Does the literature justify this counterintuitive result? In my opinion it does not.
+
+```{r Originalgraph, fig.cap="Original Graph of Guski", fig.width=6.7}
+knitr::include_graphics("external_img/GuskiMetaRegression.png")
+
+# knitr::knit_hooks$set(plot = function(x, options)  {
+#   paste0(knitr::hook_plot_tex(x, options), "\n\\FloatBarrier\n")
+# })
+
+```
+
+The ERR used here corresponds to the "WHO full dataset road", indicated by the black line. The key numbers of the ERR are listed in Tab. \@ref(tab:fullErrGuski).
+
+```{r ERRfullData, tab.id = "fullErrGuski", tab.cap = "Data values of the ERR for road traffic noise of the full data set as stated by [@Guski2017]"}
+# Erstellung von Tabellen mit dem Paket flextable, das Paket ist darauf optimiert Word kompatible Tabellen zu erstellen.
+
+ERRfull <- function(L) {
+  78.9270-3.1162*L+0.0342*L^2
+}
+Lmin<-3.1162/2/0.0342
+data.frame(LDEN = c(40, Lmin, 2 * Lmin - 40, 55, 60, 70, 80)) %>%
+  mutate(
+    `Full dataset %HA` = ERRfull(LDEN),
+    ratio = `Full dataset %HA` / ERRfull(40)
+  ) %>%
+  round(digits = 2) %>% 
+  mutate(comment = c(
+      "negative slope",
+      "minimum",
+      "initial value",
+      "inital value + 2%",
+      "94% of population below",
+      "",
+      ""
+    )) %>% 
+  flextable(  cwidth = 1)# erstellen einer Tabelle
+```
+
+In the 15 dB-range from 40 to 55 dB, the annoyance value stays more or less constant; in the range of 9±2 %HA. This would mean, the annoyance by road traffic noise in the range 40 to 55 dB is rather high, but quite insensitive to the actual noise level. The annoyance at higher levels is moderately increasing compared to the starting value at 40 dB. All these conclusions seem to contradict intuition. All these mathematical properties (rather high starting point, negative slope, minimum point, little variation over a 15 dB-range, moderate increase with respect to the starting point) distinguish this congregated dataset from all individual study datasets. In my opinion, this difference is due to a meta-analysis method, which does not adequately respect the inter-study systematic differences. I.e. the annoyance at a given level L_0, of study I, %HA_i (L_0) probably strongly correlates with the lower end of the examined exposure level range L\_(Lo,i). An alternative approach to the given meta-analysis could be:
+
+-   Choosing an appropriate parametrization for the ERR with reasonable boundary conditions (e.g. polynom of 1st or 2nd degree, no negative slope in the range 40 to 80 dB, ...)
+
+-   Fitting the parameters to all individual study data sets separately. Aggregating the fit parameters, weighted with an adequate weight (i.e. √N_i, where N is the study size and i the individual study)
+
+-   Use the log- (or logit-)transformed y-values and a logistic regression. This would force the functions to have a realistic asymptotic behaviour to low (and high) *L~DEN~*-values and still take into account the influence of all studies even out of the repectives studies range.
+
+# Data wrangling
+
+Rainer Guski provided me his data tables of as Excel list. As a start I read the road noise annoyance them in and reformatted them in a tidy format in the sense of R[^1].
+
+[^1]: For an explanation of tidy data see e.g.: <https://r4ds.had.co.nz/tidy-data.html>
+
+```{r data}
+# read and tidy raw data from Guski
+
+inpath<-"data/WHO Annoyance Data Road 2017_Namen_einheitlich.ods"
+outpath<-"graphs/"
+
+get_num_sheets_in_ods(inpath)
+list_ods_sheets(inpath)
+raw<-read_ods(
+  path = inpath,
+  col_names = TRUE,
+  col_types = NULL,
+  na = "",
+  skip = 0,
+  formula_as_formula = FALSE,
+  range = "A1:AM29",
+ # row_names = TRUE,
+  strings_as_factors = FALSE,
+  verbose = FALSE
+)
+
+nList <- raw[c("Location", "N Location", "Sqrt N/10")] %>%
+  clean_names(., "none") %>%
+  .[complete.cases(.), ] %>%
+  mutate(N = N_Location,
+         Sqrt_N_10 = NULL,
+         .keep = "unused")
+HAList <- raw %>%
+  select(Lden, starts_with("%HA")) %>%
+  select(!contains("M&O")) %>%
+  rename_all(.,  ~ str_replace(., "%HA ", "")) %>%
+  rename_all(.,  ~ str_replace(., " Road", "")) %>%
+  pivot_longer(
+    .,
+    cols = !contains("Lden"),
+    names_to = "Location",
+    values_to = "ProzHA"
+  ) %>%
+  .[complete.cases(.), ] %>%
+  left_join(., nList) %>%
+  group_by(Location) %>% filter(n() >= 3)# ignoriere die mit weniger als 3 Datenpunkten
+
+HAList<-HAList %>% mutate(Location=as.factor(Location))
+
+regrList <-
+  raw %>% select(Lden, contains(c("M&O", "Regr", "Perc"))) %>% .[complete.cases(.[, 2:11]), ]# Fit Ergebnisse aus Guski Tabelle, zu vergleichen mit meinen Ergebnissen
+
+#xSeq<-seq(40,85)
+
+
+```
+
+The beginning of the input data is listed in table \@ref(tab:GuskiInput).
+
+```{r tabelle, tab.id = "GuskiInput", tab.cap = "The first 10 rows of the input data, each line denoting one dot in the above graph."}
+# Erstellung von Tabellen mit dem Paket flextable, das Paket ist darauf optimiert Word kompatible Tabellen zu erstellen.
+
+HAList[1:10,] %>% 
+   flextable()# erstellen einer Tabelle
+
+```
+
+The fitting relies on the R-Package [@lme4]. More background theory can be found in the online book of Mathias Harrer [@harrer2021doing].
+
+```{r Fitvorgang, echo=FALSE}
+HAmodel <-
+  lmer(log(ProzHA) ~ Lden + (Lden |
+                               Location), HAList, weights = sqrt(N))
+HAList$fit<-predict(HAmodel)
+HAList$uncFit<-predict(HAmodel,re.form=NA)
+
+
+HAList<-regrList %>% select(Lden,`Regr WHO Road data`,`Regr WHO Road ohne Alp+Asia`) %>% 
+  left_join(x=HAList,y=.)
+HAmodel
+
+```
+
+# Results/Discussion
+
+The result of the global quadratic fit of Guski, as found in the data is plotted in Fig. \@ref(fig:GuskiFromData), in fig. \@ref(fig:logisticFitLog) including the meta regression an in fig. \@ref(fig:logisticFitLogFacet) plotted on a separate facet for each input data set.
+
+```{r GuskiFromData, echo=FALSE, fig.cap="The quadratic fit of the full dataset as provided in the data including the 5%-95% confidence band.", fig.width=6.7}
+
+# 'angle=90', out.extra='angle=90'
+HAList<-HAList %>% mutate(LocationShort=substr(Location,1,15))
+
+
+
+plWHOfit<-ggplot(HAList,aes(
+  x = Lden)) +
+  geom_line(
+    data = HAList[!is.na(HAList$`Regr WHO Road data`), ],
+    mapping = aes(
+   #   x = Lden,
+      y=  `Regr WHO Road data`,
+      alpha="Full"
+    ),
+    color = "black",
+    size=1.5,
+    na.rm = TRUE
+  )+
+  geom_ribbon(
+    data = regrList,
+    mapping = aes(
+    #  x = Lden,
+      ymin = `Percentile 5`,
+      ymax =  `Percentile 95`,
+      alpha="Full"
+    ),
+    fill = "grey",
+    alpha = 0.2
+  )+
+  # geom_line(
+  #   data = HAList[!is.na(HAList$`Regr WHO Road ohne Alp+Asia`), ],
+  #   mapping = aes(
+  #  #   x = Lden,
+  #     y=  `Regr WHO Road ohne Alp+Asia`,
+  #     alpha="wo Alp+Asia"
+  #   ),
+  #   color = "red",
+  #   size=1.5,
+  #   na.rm = TRUE)+
+  # geom_ribbon(
+  #   data = regrList,
+  #   mapping = aes(
+  #   #  x = Lden,
+  #     ymin = `Perc 5 ohne Alp`,
+  #     ymax =  `Perc 95 ohne Alp`,
+  #     alpha="wo Alp+Asia"
+  #   ),
+  #   fill = "red",
+  #   alpha = 0.2
+  # )+
+  labs(y="%HA")
+
+
+plWHOfit + scale_alpha_manual(name = NULL,
+                              values = c(1),
+                              guide = guide_legend(override.aes = list(color =  c ("black")))) +
+  theme_bw(base_size = 10)
+# Im Falle eines Exports nach pdf, kann es dazu kommen das die Abbildungen und ihre passenden Überschriften nicht in der richtigen Reihenfolge dargestellt werden, dieses Verhalten lässt sich mit folgendem Code abstellen. Dieses Vorgehen benötigt das Latex Paket placeins
+# knitr::knit_hooks$set(plot = function(x, options)  {
+#   paste0(knitr::hook_plot_tex(x, options), "\n\\FloatBarrier\n")
+# })
+
+```
+
+```{r logisticFitLog, fig.cap="Included my logistic regression", fig.width = 6.7,fig.height=8.66}
+
+vglFit <- plWHOfit +
+  geom_point(data = HAList,
+             aes(
+               #          x = Lden,
+               y = ProzHA,
+               size = sqrt(N) / 10,
+               color = Location
+             )) +
+  geom_line(data = HAList,
+            aes(#x = Lden,
+              y = exp(fit),
+              color = Location)) +
+  geom_line(
+    data = HAList,
+    aes(#x = Lden,
+      y = exp(uncFit),
+      alpha = "mixed effects log fit"),
+    size = 2,
+    color = "blue"
+  ) + scale_y_log10()
+vglLog<-
+  vglFit +
+  guides(color=guide_legend(ncol=2))+
+  scale_size_continuous(guide=guide_legend(ncol=1))+
+  scale_alpha_manual(
+    name = NULL,
+    values = c(1, 1),
+    guide = guide_legend(ncol=1,override.aes = list(
+      color =  c (
+      "black","blue")))
+  )+
+  theme_bw()+#base_size = 6) +
+  theme(legend.position="bottom",
+        legend.key.size = unit(0.5, 'cm'), #change legend key size
+        legend.key.height = unit(0.5, 'cm'), #change legend key height
+        legend.key.width = unit(0.5, 'cm'), #change legend key width
+        legend.title = element_text(size=8), #change legend title font size
+        legend.text = element_text(size=7))
+vglLog
+```
+
+```{r logisticFitLin, fig.cap="Included my logistic regression, now with linear y-Axis.", fig.width = 6.7,fig.height=8.66}
+
+
+vglLog+scale_y_continuous()
+```
+
+```{r logisticFitLogFacet, fig.cap="the same as previous figure \\@ref(fig:logisticFitLog), now each study in its own Graph.", fig.width = 6.7,fig.height=8.66}
+vglFit + facet_wrap(vars(Location))+theme_bw(base_size = 8)+scale_color_discrete(guide=NULL)+scale_size_continuous(guide=NULL)+
+  scale_alpha_manual(name = NULL,
+                              values = c(1, 1,1),
+                              guide = NULL)
+
+```
+
+# Bibliography
