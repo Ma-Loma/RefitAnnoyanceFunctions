@@ -210,7 +210,7 @@ In the 15 dB-range from 40 to 55 dB, the annoyance value stays more or less cons
 
 # Data wrangling
 
-Rainer Guski provided me his data tables of as Excel list. As a start I read the road noise annoyance them in and reformatted them in a tidy format in the sense of R[^1].
+Rainer Guski provided me his data tables of as Excel list. As a start I read the road noise annoyance them in and reformatted them in a tidy format in the sense of R[^1]. Later, I will also include Ben Fenechs data.
 
 [^1]: For an explanation of tidy data see e.g.: <https://r4ds.had.co.nz/tidy-data.html>
 
