@@ -1,6 +1,7 @@
 ---
 title: "Reanalysis of noise annoyance functions"
-subtitle: "Author: Matthias Lochmann \nHessisches Landesamt für Naturschutz, Umwelt und Geologie"
+subtitle: "Using data from existing reviews"
+author: "Matthias Lochmann (Hessisches Landesamt für Naturschutz, Umwelt und Geologie)"
 link citations: true
 header-includes:
    - \usepackage{placeins}
@@ -9,16 +10,13 @@ bibliography: bibliography/RefitReport.bib
 always_allow_html: yes
 ---
 
-```{=html}
-<!--
-Dies ist ein Beispiel Markdown Kommentar, im Dokument finden sich weitere solcher Kommentare, die einzelne Themen kurz erläutern
--->
-```
 ```{r setup, include=FALSE}
+rm(list = ls())
+#install.packages("directlabels")
 #Versuch, ein Literaturverwaltungsschnittstelle zu nutzen
 #update.packages(ask = FALSE)
 #remotes::install_github("paleolimbot/rbbt")
-library(rbbt)
+#library(rbbt)# would be needed for Zotero-Integration
 # Laden der für das Dokument benötitgten Pakete
 library(knitr)
 library(stringr)
@@ -30,6 +28,7 @@ library(plotly)
 library(flextable)
 library(lubridate)
 library(tidyr)
+library(directlabels)
 
 library(pdftools)
 library(rsvg)
@@ -108,17 +107,19 @@ get_image_info <- function(path, type = "svg") {
 ```{r AnalyseSetup, include=FALSE}
 
 # Laden der speziell für die Analyse benötigten zusätzlichen Pakete
+#install.packages("dmetar")
 library(meta)
 library(metafor)
-library(dmetar)
+#library(dmetar)
 library(tidyverse)
 library(janitor)
 library(readODS)
 library(lme4)
 ```
 
-```{r logo, fig.align='center'}
+```{r logo, eval=FALSE, fig.align='center', include=FALSE}
 # Einbinden des Logos HLNUG auf das Deckblatt
+# Derzeit deaktiviert
 knitr::include_graphics("external_img/logo.jpg")
 ```
 
@@ -162,7 +163,7 @@ The analysis an the report was written in RMarkdown. See e.g. @xie2015 .
 
 # Scientific Starting Point
 
-In order to estimate the environmental burden of disease of road noise, it is neccessairy to calculate the number of highly annoyed persons. The contribution of annoyance to the noise burden amounts to roughly half the total value[@Tobollik2019; @Hegewald2021]. As an important proportion of the hessian population is expected to be exposed to road noise in the range of 40 to 50 dB(A) *L~DEN~* the behavior of the exposure-response-relation (ERR) for high annoyance is of special interest. Especially the application of health impact assessments of noise mitigation measures, such as a hypothetical uniform reduction of all road noise sources by 3 dB, highlights the problematic aspect of the Guski[@Guski2017] as depicted in fig. \@ref(fig:Originalgraph): It is counter-intuitive, that there is a local minimum of annoyance at about 45 dB(A) *L~DEN~*. By reducing the exposure in this range by 3 dB, the ERR calculated burden might increase. Does the literature justify this counterintuitive result? In my opinion it does not.
+In order to estimate the environmental burden of disease of road noise, it is neccessairy to calculate the number of highly annoyed persons. The contribution of annoyance to the noise burden amounts to roughly half the total value of the total attributable burden[@Tobollik2019; @Hegewald2021]. As an important proportion of the hessian population is expected to be exposed to road noise in the range of 40 to 50 dB(A) *L~DEN~* the behavior of the exposure-response-relation (ERR) for high annoyance is of special interest. Especially the application of health impact assessments of noise mitigation measures, such as a hypothetical uniform reduction of all road noise sources by 3 dB, highlights the problematic aspect of the Guski[@Guski2017] as depicted in fig. \@ref(fig:Originalgraph): It is counter-intuitive, that there is a local minimum of annoyance at about 45 dB(A) *L~DEN~*. By reducing the exposure in this range by 3 dB, the ERR calculated burden might increase. Does the literature justify this counterintuitive result? In my opinion it does not.
 
 ```{r Originalgraph, fig.cap="Original Graph of Guski", fig.width=6.7}
 knitr::include_graphics("external_img/GuskiMetaRegression.png")
@@ -210,37 +211,67 @@ In the 15 dB-range from 40 to 55 dB, the annoyance value stays more or less cons
 
 # Data wrangling
 
-Rainer Guski provided me his data tables of as Excel list. As a start I read the road noise annoyance them in and reformatted them in a tidy format in the sense of R[^1]. Later, I will also include Ben Fenechs data.
+Both, Rainer Guski as well as Benjamin Fenech [@Fenech] provided me their data tables as ods-spredsheet. As a start I imported the road noise annoyance data and reformatted them in a tidy format in the sense of R[^1]. Then I manually added the information of the study region (Europe, Africa, Asia or America). [To be reviewed].
 
 [^1]: For an explanation of tidy data see e.g.: <https://r4ds.had.co.nz/tidy-data.html>
 
 ```{r data}
-# read and tidy raw data from Guski
-
-inpath<-"data/WHO Annoyance Data Road 2017_Namen_einheitlich.ods"
+# read and tidy raw data from Guski and Fenech
+cellRanges<-c("A1:AM29","A2:BA48")
+inpath<-c("data/WHO Annoyance Data Road 2017_Namen_einheitlich.ods","data/Fenech et al. Internoise 2022 road.ods")
 outpath<-"graphs/"
 
-get_num_sheets_in_ods(inpath)
-list_ods_sheets(inpath)
-raw<-read_ods(
-  path = inpath,
-  col_names = TRUE,
-  col_types = NULL,
-  na = "",
-  skip = 0,
-  formula_as_formula = FALSE,
-  range = "A1:AM29",
- # row_names = TRUE,
-  strings_as_factors = FALSE,
-  verbose = FALSE
-)
+
+
+#get_num_sheets_in_ods(inpath[i])
+#list_ods_sheets(inpath[i])
+readRaw <- function(path, whichCells) {
+  odsData <- read_ods(
+    path = path,
+    col_names = TRUE,
+    col_types = NULL,
+    na = "",
+    skip = 0,
+    formula_as_formula = FALSE,
+    range = whichCells,
+    # row_names = TRUE,
+    strings_as_factors = FALSE,
+    verbose = FALSE
+  )
+  return(odsData)
+}
+
+i<-1#Guski dataset
+raw<-readRaw(inpath[i],cellRanges[i])
+regrList <-
+  raw %>% select(Lden, contains(c("M&O", "Regr", "Perc"))) %>%
+  .[complete.cases(.[, 2:4]),]# Use only fit results from Guski dataset everything else is redundant to Fenechs dataset
+write.csv2(regrList,file="data/WHOAnnoyanceRegression.csv",row.names=FALSE)
+
+
+regrListTidy<-read_delim("data/WHOAnnoyanceRegressionTidy.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(date_names = "de", 
+        decimal_mark = ",", grouping_mark = "."), 
+    na = "NA", trim_ws = TRUE)
+
+i<-2#Fenech dataset
+raw<-readRaw(inpath[i],cellRanges[i])
 
 nList <- raw[c("Location", "N Location", "Sqrt N/10")] %>%
   clean_names(., "none") %>%
+  mutate(Location=str_replace(Location, "%HA ", "")) %>%
+  mutate(Location=str_replace(Location, " Road", "")) %>%
   .[complete.cases(.), ] %>%
   mutate(N = N_Location,
          Sqrt_N_10 = NULL,
          .keep = "unused")
+write.csv2(nList,file="data/MetadataStudies.csv",row.names=FALSE)
+nListTidy<-read_delim("data/MetadataStudiesTidy.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(date_names = "de", 
+        decimal_mark = ",", grouping_mark = "."), 
+    na = "NA", trim_ws = TRUE)
+
+
 HAList <- raw %>%
   select(Lden, starts_with("%HA")) %>%
   select(!contains("M&O")) %>%
@@ -253,22 +284,16 @@ HAList <- raw %>%
     values_to = "ProzHA"
   ) %>%
   .[complete.cases(.), ] %>%
-  left_join(., nList) %>%
-  group_by(Location) %>% filter(n() >= 3)# ignoriere die mit weniger als 3 Datenpunkten
+  left_join(., nListTidy) %>%
+  group_by(Location)
 
 HAList<-HAList %>% mutate(Location=as.factor(Location))
 
-regrList <-
-  raw %>% select(Lden, contains(c("M&O", "Regr", "Perc"))) %>% .[complete.cases(.[, 2:11]), ]# Fit Ergebnisse aus Guski Tabelle, zu vergleichen mit meinen Ergebnissen
-
-#xSeq<-seq(40,85)
-
-
 ```
 
-The beginning of the input data is listed in table \@ref(tab:GuskiInput).
+The beginning of the input data is listed in table \@ref(tab:reviewInput).
 
-```{r tabelle, tab.id = "GuskiInput", tab.cap = "The first 10 rows of the input data, each line denoting one dot in the above graph."}
+```{r tabelleRev, tab.id = "reviewInput", tab.cap = "The first 10 rows of the input data, each line denoting one dot in the above graph. The column listedBy denotes either the publication of Guski (G) or Fenech (F)"}
 # Erstellung von Tabellen mit dem Paket flextable, das Paket ist darauf optimiert Word kompatible Tabellen zu erstellen.
 
 HAList[1:10,] %>% 
@@ -276,146 +301,185 @@ HAList[1:10,] %>%
 
 ```
 
-The fitting relies on the R-Package [@lme4]. More background theory can be found in the online book of Mathias Harrer [@harrer2021doing].
+The studies listed in table \@ref(tab:StudiesWFewPoinst) have less than 3 data points and will be ignored for the first guess analysis, in order to be able to perform meaningful fits on individual studies. For further refinement, also these studies will need to be included.
+
+```{r tabelleFewPt, tab.id = "StudiesWFewPoinst", tab.cap = "Location and number of datapoints of those studies with less than 3 datapoints. These studies will be ignored for the first guess analysis."}
+
+HAList %>% 
+  tally() %>% 
+  mutate(n_Points=n,.keep="unused") %>% 
+  filter(n_Points<3) %>% 
+  flextable()
+
+```
+
+The fitting relies on the R-Package [@lme4]. More background theory can be found in the online book of Mathias Harrer [@harrer2021doing]. As a first guess, I transform the response - here given as %HA -  to the log of response log(%HA). As one study states %HA=0, and log(0) is not defined, one needs to find a workaround. For the first guess, I just omit these data points.
+As a second approach, I fit the regions seperately.
 
 ```{r Fitvorgang, echo=FALSE}
-HAmodel <-
-  lmer(log(ProzHA) ~ Lden + (Lden |
-                               Location), HAList, weights = sqrt(N))
-HAList$fit<-predict(HAmodel)
-HAList$uncFit<-predict(HAmodel,re.form=NA)
 
+HAListFinite <- HAList %>%
+  filter(n() >= 3) %>% # ignore studies with less than 3 datapoints
+  filter(ProzHA > 0) #if using log, one needs to deal with response 0... As first step, I ignore them by filtering
+HAmodel <- lmer(log(ProzHA) ~ Lden + (Lden |
+                               Location), HAListFinite, weights = sqrt(N))
+HAmodelReg <- lmer(log(ProzHA) ~ Lden + (Lden |
+                               Region), HAListFinite, weights = sqrt(N))
 
-HAList<-regrList %>% select(Lden,`Regr WHO Road data`,`Regr WHO Road ohne Alp+Asia`) %>% 
-  left_join(x=HAList,y=.)
+HAListFinite$fit<-predict(HAmodel)
+HAListFinite$RegionFit<-predict(HAmodelReg)
+HAListFinite$logFitAll<-predict(HAmodel,re.form=NA)
+myFitRes<-HAListFinite %>% 
+  ungroup() %>% 
+  select(Lden,logFitAll,Region,RegionFit) %>% 
+  unique()
 HAmodel
+HAmodelReg
 
 ```
 
 # Results/Discussion
 
-The result of the global quadratic fit of Guski, as found in the data is plotted in Fig. \@ref(fig:GuskiFromData), in fig. \@ref(fig:logisticFitLog) including the meta regression an in fig. \@ref(fig:logisticFitLogFacet) plotted on a separate facet for each input data set.
+The result of the global quadratic fit of Guski, as found in the data is plotted in Fig. \@ref(fig:GuskiFromData). 
 
 ```{r GuskiFromData, echo=FALSE, fig.cap="The quadratic fit of the full dataset as provided in the data including the 5%-95% confidence band.", fig.width=6.7}
 
 # 'angle=90', out.extra='angle=90'
-HAList<-HAList %>% mutate(LocationShort=substr(Location,1,15))
+HAListFinite <-
+  HAListFinite %>%
+  mutate(LocationShort = substr(Location, 1, 15))
 
-
-
-plWHOfit<-ggplot(HAList,aes(
-  x = Lden)) +
-  geom_line(
-    data = HAList[!is.na(HAList$`Regr WHO Road data`), ],
-    mapping = aes(
-   #   x = Lden,
-      y=  `Regr WHO Road data`,
-      alpha="Full"
-    ),
-    color = "black",
-    size=1.5,
-    na.rm = TRUE
-  )+
+plWHOfit <-
+  regrListTidy %>%
+  ggplot(aes(x = Lden, y = prozHA)) +
+  geom_line(aes(color = Source),
+            linewidth = 1,
+            na.rm = TRUE) +
   geom_ribbon(
-    data = regrList,
-    mapping = aes(
-    #  x = Lden,
-      ymin = `Percentile 5`,
-      ymax =  `Percentile 95`,
-      alpha="Full"
-    ),
-    fill = "grey",
-    alpha = 0.2
-  )+
-  # geom_line(
-  #   data = HAList[!is.na(HAList$`Regr WHO Road ohne Alp+Asia`), ],
-  #   mapping = aes(
-  #  #   x = Lden,
-  #     y=  `Regr WHO Road ohne Alp+Asia`,
-  #     alpha="wo Alp+Asia"
-  #   ),
-  #   color = "red",
-  #   size=1.5,
-  #   na.rm = TRUE)+
-  # geom_ribbon(
-  #   data = regrList,
-  #   mapping = aes(
-  #   #  x = Lden,
-  #     ymin = `Perc 5 ohne Alp`,
-  #     ymax =  `Perc 95 ohne Alp`,
-  #     alpha="wo Alp+Asia"
-  #   ),
-  #   fill = "red",
-  #   alpha = 0.2
-  # )+
-  labs(y="%HA")
+    aes(ymin = lower,
+        ymax =  upper,  fill = Source),
+    outline.type = "both",
+    alpha = 0.15
+  ) +
+  labs(y = "%HA") 
 
 
-plWHOfit + scale_alpha_manual(name = NULL,
-                              values = c(1),
-                              guide = guide_legend(override.aes = list(color =  c ("black")))) +
+color4 <- c("black", "red", "blue", "green")
+plWHOlin<-plWHOfit +
+  scale_color_manual(name = "Source of fit",
+                     values = color4) +
+  scale_fill_manual(name = "Source of fit",
+                    values = color4) +
   theme_bw(base_size = 10)
-# Im Falle eines Exports nach pdf, kann es dazu kommen das die Abbildungen und ihre passenden Überschriften nicht in der richtigen Reihenfolge dargestellt werden, dieses Verhalten lässt sich mit folgendem Code abstellen. Dieses Vorgehen benötigt das Latex Paket placeins
-# knitr::knit_hooks$set(plot = function(x, options)  {
-#   paste0(knitr::hook_plot_tex(x, options), "\n\\FloatBarrier\n")
-# })
+plWHOlin
+#  facet_wrap(vars(Source))+
+
 
 ```
 
-```{r logisticFitLog, fig.cap="Included my logistic regression", fig.width = 6.7,fig.height=8.66}
+The same plot can be plotted on a logharitmic scale. In this way, the discrepancy at the lower end of the LDEN-scale are more obvious.
 
-vglFit <- plWHOfit +
-  geom_point(data = HAList,
-             aes(
-               #          x = Lden,
-               y = ProzHA,
-               size = sqrt(N) / 10,
-               color = Location
-             )) +
-  geom_line(data = HAList,
-            aes(#x = Lden,
-              y = exp(fit),
-              color = Location)) +
+```{r GuskiFromDataLog, echo=FALSE, fig.cap="Again, the result of Guski and Miedema, but now on a logharitmic scale.", fig.width=6.7}
+plWHOlin+ scale_y_log10()
+```
+
+In fig. \@ref(fig:logisticFitLog), I plot the result of my meta regression and in fig. \@ref(fig:logisticFitLogFacet) plotted on a separate facet for each input data set.
+
+```{r logisticFitLog, fig.cap="The dataset excluding studies with less than 3 datapoints and datapoints with zero annoyance. The black line is my logistic regression, the gray line are the respective results of the mixed effect fit taking the variable region into account. Here, I show only the Percentate of highly annoyed from 0.2 Percent, although some datapoints have lower values.", fig.width = 6.7,fig.height=8.66}
+
+
+vglFit <- ggplot(HAListFinite, aes(x = Lden)) +
+  geom_point(aes(
+    y = ProzHA,
+    size = sqrt(N) / 20,
+    color = Location
+  )) +
+  geom_line(aes(y = exp(fit),
+                color = Location))  +
+  geom_dl(
+    aes(
+      y = exp(fit),
+      label = Location,
+      color = Location
+    ),
+    method = list(dl.combine("last.points"), show.legend = F),
+    cex = 0.8
+  ) +
   geom_line(
-    data = HAList,
-    aes(#x = Lden,
-      y = exp(uncFit),
-      alpha = "mixed effects log fit"),
-    size = 2,
-    color = "blue"
-  ) + scale_y_log10()
-vglLog<-
-  vglFit +
-  guides(color=guide_legend(ncol=2))+
-  scale_size_continuous(guide=guide_legend(ncol=1))+
-  scale_alpha_manual(
-    name = NULL,
-    values = c(1, 1),
-    guide = guide_legend(ncol=1,override.aes = list(
-      color =  c (
-      "black","blue")))
+    data = myFitRes,
+    aes(y = exp(logFitAll),
+        color = "mixed effects log fit"),
+    linewidth = 2,
+    color = "black"
+  ) +
+  geom_line(
+    data = myFitRes,
+    aes(y = exp(RegionFit),
+        color = "mixed effects log fit"),
+    linewidth = 2,
+#    linetype = factor(Region),
+    color = "grey"
   )+
-  theme_bw()+#base_size = 6) +
-  theme(legend.position="bottom",
-        legend.key.size = unit(0.5, 'cm'), #change legend key size
-        legend.key.height = unit(0.5, 'cm'), #change legend key height
-        legend.key.width = unit(0.5, 'cm'), #change legend key width
-        legend.title = element_text(size=8), #change legend title font size
-        legend.text = element_text(size=7))
-vglLog
+scale_y_log10(n.breaks = 10) +
+  coord_cartesian(ylim = c(0.2, 120)) +
+  guides(color = "none") +
+  theme_bw() + #base_size = 6) +
+  theme(
+    #legend.position = "bottom",
+    legend.key.size = unit(0.5, 'cm'),
+    #change legend key size
+    legend.key.height = unit(0.5, 'cm'),
+    #change legend key height
+    legend.key.width = unit(0.5, 'cm'),
+    #change legend key width
+    legend.title = element_text(size = 8),
+    #change legend title font size
+    legend.text = element_text(size = 7)
+  )+facet_wrap(vars(Region))
+vglFit 
+
 ```
 
-```{r logisticFitLin, fig.cap="Included my logistic regression, now with linear y-Axis.", fig.width = 6.7,fig.height=8.66}
+```{r logisticFitLin, fig.cap="The same dataset and my logistic regression, now with linear y-Axis.", fig.width = 6.7,fig.height=8.66}
 
+vglFit+scale_y_continuous()
 
-vglLog+scale_y_continuous()
 ```
 
 ```{r logisticFitLogFacet, fig.cap="the same as previous figure \\@ref(fig:logisticFitLog), now each study in its own Graph.", fig.width = 6.7,fig.height=8.66}
-vglFit + facet_wrap(vars(Location))+theme_bw(base_size = 8)+scale_color_discrete(guide=NULL)+scale_size_continuous(guide=NULL)+
+plWHOfit +
+  geom_point(data = HAListFinite, aes(
+    y = ProzHA,
+    size = sqrt(N) / 20,
+    color = Location
+  )) +
+  geom_line(data = HAListFinite, aes(y = exp(fit),
+                                     color = Location)) +
+  geom_line(
+    data = HAListFinite,
+    aes(y = exp(logFitAll),
+        color = "mixed effects log fit"),
+    linewidth = 2,
+    color = "black"
+  ) +
+  # geom_dl(
+  #   data = HAListFinite,
+  #   aes(
+  #     y = exp(fit),
+  #     label = Location,
+  #     color = Location
+  #   ),
+  #   method = list(dl.combine("last.points"), show.legend = F),
+  #   cex = 0.8
+  # ) +
+  facet_wrap(Region+Location~.) +
+  theme_bw(base_size = 8) +
+  scale_color_discrete(guide =
+                         NULL) + 
+  scale_size_continuous(guide = NULL) +
   scale_alpha_manual(name = NULL,
-                              values = c(1, 1,1),
-                              guide = NULL)
+                     values = c(1, 1, 1),
+                     guide = NULL)
 
 ```
 

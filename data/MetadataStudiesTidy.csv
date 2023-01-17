@@ -1,0 +1,47 @@
+Location;N;listedBy;Region
+Heathrow;600;G;Europe
+Berlin;972;G;Europe
+Amsterd;898;G;Europe
+Stockholm;1003;G;Europe
+Athen;635;G;Europe
+Malpensa;753;G;Europe
+DaNang;492;G;Asia
+France;701;G;Europe
+Hanoi;1502;G;Asia
+Ho Ch iMinh;1463;G;Asia
+Hong Kong;10077;G;Asia
+Hue;688;G;Asia
+Swiss;2386;G;Europe
+Thai-Nguyen;813;G;Asia
+Gothenbg detached;436;G;Europe
+Gothenbg apartment;706;G;Europe
+Kumamoto detached;378;G;Asia
+Kumamoto apartment;469;G;Asia
+Sapporo detached;411;G;Asia
+Sapporo apartment;369;G;Asia
+Wipptal Mainroad Face;1991;G;Europe
+Wipptal Highway Face;1762;G;Europe
+Wipptal Highw+Mainr Phone;1327;G;Europe
+Inntal Mainroad;1641;G;Europe
+Inntal Highway;1641;G;Europe
+Switzerland 2019;5592;F;Europe
+Ulsan 2016;967;F;Asia
+Seoul 2016;869;F;Asia
+Portugal 2015;180;F;Europe
+Muang Phuket 2017;126;F;Asia
+Thalang 2017;103;F;Asia
+Kathu 2017;24;F;Asia
+Montreal 2015;4336;F;America
+Denmark Motorway 2016;3446;F;Europe
+Denmark Urban 2016;3315;F;Europe
+Tunisia 2020;1272;F;Africa
+India 2021;565;F;Asia
+Lower Inn Valley 2020;1003;F;Europe
+Innsbruck 2019;1031;F;Europe
+Equador 2022;225;F;America
+Fiinland 2021;6754;F;Europe
+Japan JPN011RT2000;1601;F;Asia
+Japan JPN016RT2003;272;F;Asia
+Japan JPN021RT2004;1358;F;Asia
+Japan ISK101RT2007;371;F;Asia
+Japan STM104RT2011;189;F;Asia
