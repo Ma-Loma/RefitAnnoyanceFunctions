@@ -361,7 +361,8 @@ plWHOfit <-
     outline.type = "both",
     alpha = 0.15
   ) +
-  labs(y = "%HA") 
+  labs(x=expression(L[DEN]~"[dB(A)]"),y="%HA")
+
 
 
 color4 <- c("black", "red", "blue", "green")
@@ -408,7 +409,7 @@ vglFit <- ggplot(HAListFinite, aes(x = Lden)) +
   geom_line(
     data = myFitRes,
     aes(y = exp(logFitAll),
-        color = "mixed effects log fit"),
+        color = "global log fit"),
     linewidth = 2,
     color = "black"
   ) +
@@ -420,6 +421,7 @@ vglFit <- ggplot(HAListFinite, aes(x = Lden)) +
 #    linetype = factor(Region),
     color = "grey"
   )+
+  labs(x=expression(L[DEN]~"[dB(A)]"),y="%HA")+
 scale_y_log10(n.breaks = 10) +
   coord_cartesian(ylim = c(0.2, 120)) +
   guides(color = "none") +
@@ -451,15 +453,15 @@ plWHOfit +
   geom_point(data = HAListFinite, aes(
     y = ProzHA,
     size = sqrt(N) / 20,
-    color = Location
+    color = Location,
+    show.legend = F
   )) +
-  geom_line(data = HAListFinite, aes(y = exp(fit),
-                                     color = Location)) +
+  #geom_line(data = HAListFinite, aes(y = exp(fit)),color = Location,show.legend = F) +
   geom_line(
     data = HAListFinite,
     aes(y = exp(logFitAll),
         color = "mixed effects log fit"),
-    linewidth = 2,
+    linewidth = 1,
     color = "black"
   ) +
   # geom_dl(
@@ -472,14 +474,15 @@ plWHOfit +
   #   method = list(dl.combine("last.points"), show.legend = F),
   #   cex = 0.8
   # ) +
-  facet_wrap(Region+Location~.) +
+  facet_wrap(Region+Location~., labeller = labeller(.multi_line=FALSE)) +
   theme_bw(base_size = 8) +
-  scale_color_discrete(guide =
-                         NULL) + 
-  scale_size_continuous(guide = NULL) +
-  scale_alpha_manual(name = NULL,
-                     values = c(1, 1, 1),
-                     guide = NULL)
+  scale_color_discrete(guide =NULL) +
+  scale_fill_discrete(guide =NULL)  
+  #scale_size_continuous(guide = NULL)
+  # scale_alpha_manual(name = NULL,
+  #                    values = c(1, 1, 1),
+  #                    guide = NULL)
+
 
 ```
 

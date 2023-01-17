@@ -1,6 +1,6 @@
 
-# erstellen eines docx --------------------------------------
-# mit dem Namen "beispiel_word.docx" das Dokument verwendet als Referenz ein Word mit der Bezeichnung "Vorlage QS.docx"
+# Erstellen eines docx --------------------------------------
+# mit dem hier angegebenen Namen und Pfad und unter Verwendung der Vorlage eines Word-Dokumentes, unter dem angegebenen Pfad
 rmarkdown::render("RefitReport.rmd",
                   officedown::rdocx_document(
                     # plots = list(caption = list(style = "Image Caption", # Definition das Abbildungsuntertitel mit der Abbkürzung Abb eingeleitet werden
