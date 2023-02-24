@@ -254,7 +254,7 @@ regrListTidy<-read_delim("data/WHOAnnoyanceRegressionTidy.csv",
         decimal_mark = ",", grouping_mark = "."), 
     na = "NA", trim_ws = TRUE)
 
-i<-2#Fenech dataset
+i<-2#Fenech dataset, which includes most of the Guski data
 raw<-readRaw(inpath[i],cellRanges[i])
 
 nList <- raw[c("Location", "N Location", "Sqrt N/10")] %>%
@@ -321,9 +321,9 @@ As a second approach, I fit the regions seperately.
 HAListFinite <- HAList %>%
   filter(n() >= 3) %>% # ignore studies with less than 3 datapoints
   filter(ProzHA > 0) #if using log, one needs to deal with response 0... As first step, I ignore them by filtering
-HAmodel <- lmer(log(ProzHA) ~ Lden + (Lden |
+HAmodel <- lme4::lmer(log(ProzHA) ~ Lden + (Lden |
                                Location), HAListFinite, weights = sqrt(N))
-HAmodelReg <- lmer(log(ProzHA) ~ Lden + (Lden |
+HAmodelReg <- lme4::lmer(log(ProzHA) ~ Lden + (Lden |
                                Region), HAListFinite, weights = sqrt(N))
 
 HAListFinite$fit<-predict(HAmodel)
