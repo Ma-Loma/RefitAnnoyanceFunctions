@@ -250,8 +250,7 @@ write.csv2(regrList,file="data/WHOAnnoyanceRegression.csv",row.names=FALSE)
 
 
 regrListTidy<-read_delim("data/WHOAnnoyanceRegressionTidy.csv", 
-    delim = ";", escape_double = FALSE, locale = locale(date_names = "de", 
-        decimal_mark = ",", grouping_mark = "."), 
+    delim = "\t", escape_double = FALSE,# locale = locale(date_names = "de", decimal_mark = ".", grouping_mark = "."), 
     na = "NA", trim_ws = TRUE)
 
 i<-2#Fenech dataset, which includes most of the Guski data
@@ -267,8 +266,7 @@ nList <- raw[c("Location", "N Location", "Sqrt N/10")] %>%
          .keep = "unused")
 write.csv2(nList,file="data/MetadataStudies.csv",row.names=FALSE)
 nListTidy<-read_delim("data/MetadataStudiesTidy.csv", 
-    delim = ";", escape_double = FALSE, locale = locale(date_names = "de", 
-        decimal_mark = ",", grouping_mark = "."), 
+    delim = "\t", escape_double = FALSE,# locale = locale(date_names = "de", decimal_mark = ",", grouping_mark = "."), 
     na = "NA", trim_ws = TRUE)
 
 
