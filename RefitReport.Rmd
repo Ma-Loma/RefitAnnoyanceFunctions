@@ -249,7 +249,7 @@ regrList <-
 write.csv2(regrList,file="data/WHOAnnoyanceRegression.csv",row.names=FALSE)
 
 
-regrListTidy<-read_delim("data/WHOAnnoyanceRegressionTidy.csv", 
+regrListTidy<-read_delim("data/WHOAnnoyanceRegressionTidy.tsv", 
     delim = "\t", escape_double = FALSE,# locale = locale(date_names = "de", decimal_mark = ".", grouping_mark = "."), 
     na = "NA", trim_ws = TRUE)
 
@@ -265,7 +265,7 @@ nList <- raw[c("Location", "N Location", "Sqrt N/10")] %>%
          Sqrt_N_10 = NULL,
          .keep = "unused")
 write.csv2(nList,file="data/MetadataStudies.csv",row.names=FALSE)
-nListTidy<-read_delim("data/MetadataStudiesTidy.csv", 
+nListTidy<-read_delim("data/MetadataStudiesTidy.tsv", 
     delim = "\t", escape_double = FALSE,# locale = locale(date_names = "de", decimal_mark = ",", grouping_mark = "."), 
     na = "NA", trim_ws = TRUE)
 
