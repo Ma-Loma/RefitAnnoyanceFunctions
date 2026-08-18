@@ -297,6 +297,13 @@ The beginning of the input data is listed in table \@ref(tab:reviewInput).
 
 HAList[1:10,] %>% 
    flextable()# erstellen einer Tabelle
+HAList %>%
+  write.table("./data/Fenech_Guski_tidy.tsv",
+              sep="\t",
+              quote = FALSE,
+              eol = "\n",
+              dec = ".",
+              row.names = FALSE)
 
 ```
 
