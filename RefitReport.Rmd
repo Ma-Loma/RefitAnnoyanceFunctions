@@ -12,6 +12,7 @@ always_allow_html: yes
 
 ```{r setup, include=FALSE}
 rm(list = ls())
+.libPaths("C:/Users/lochmannm/Documents/R/library-4.6.1")
 #install.packages("directlabels")
 #Versuch, ein Literaturverwaltungsschnittstelle zu nutzen
 #update.packages(ask = FALSE)
