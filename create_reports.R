@@ -1,4 +1,4 @@
-
+library(officedown)
 # Erstellen eines docx --------------------------------------
 # mit dem hier angegebenen Namen und Pfad und unter Verwendung der Vorlage eines Word-Dokumentes, unter dem angegebenen Pfad
 rmarkdown::render("RefitReport.rmd",
